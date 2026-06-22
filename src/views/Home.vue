@@ -39,17 +39,46 @@
     <!-- 日历区域 -->
     <div class="calendar-section">
       <div class="section-title">📆 活动日历</div>
-      <van-calendar
-        :poppable="false"
-        :show-confirm="false"
-        :style="{ height: '400px' }"
-        :min-date="calendarMinDate"
-        :max-date="calendarMaxDate"
-        @select="onCalendarSelect"
-        :formatter="calendarFormatter"
-        color="#4fc3f7"
-      />
+      <div class="calendar-header">
+        <button class="cal-nav-btn" @click="prevMonth">‹</button>
+        <span class="cal-month-label" @click="showMonthPicker = true">
+          {{ calYear }}年{{ calMonth + 1 }}月
+        </span>
+        <button class="cal-nav-btn" @click="nextMonth">›</button>
+      </div>
+      <div class="calendar-weekdays">
+        <span v-for="w in ['日','一','二','三','四','五','六']" :key="w" class="cal-weekday">{{ w }}</span>
+      </div>
+      <div class="calendar-grid">
+        <div
+          v-for="(day, idx) in calendarDays"
+          :key="idx"
+          class="cal-day"
+          :class="{
+            'cal-day-other': !day.currentMonth,
+            'cal-day-today': day.isToday,
+            'cal-day-has-activity': day.hasActivity
+          }"
+          @click="day.currentMonth && onDayClick(day.date)"
+        >
+          <span class="cal-day-num">{{ day.day }}</span>
+          <span v-if="day.hasActivity" class="cal-dot">●</span>
+        </div>
+      </div>
     </div>
+
+    <!-- 月份选择器 -->
+    <van-popup v-model:show="showMonthPicker" position="bottom" round>
+      <van-date-picker
+        v-model="pickerDate"
+        title="选择年月"
+        :columns-type="['year', 'month']"
+        :min-date="new Date(2020, 0, 1)"
+        :max-date="new Date(2030, 11, 31)"
+        @confirm="onMonthPickerConfirm"
+        @cancel="showMonthPicker = false"
+      />
+    </van-popup>
 
     <!-- 选中日期的活动 -->
     <van-popup v-model:show="showDateActivities" position="bottom" round :style="{ maxHeight: '60%' }">
@@ -154,33 +183,79 @@ function editActivity(activity) {
   router.push(`/activity/edit/${activity.id}`)
 }
 
-// 日历相关
-const calendarMinDate = computed(() => {
-  const d = new Date()
-  d.setMonth(d.getMonth() - 1)
-  return d
-})
+// 自定义日历相关
+const calYear = ref(new Date().getFullYear())
+const calMonth = ref(new Date().getMonth())
+const showMonthPicker = ref(false)
+const pickerDate = ref([String(new Date().getFullYear()), String(new Date().getMonth() + 1).padStart(2, '0')])
 
-const calendarMaxDate = computed(() => {
-  const d = new Date()
-  d.setMonth(d.getMonth() + 2)
-  return d
-})
-
-function calendarFormatter(day) {
-  const dateStr = formatDateKey(day.date)
-  const hasActivity = activities.value.some(a => {
-    const start = formatDateKey(new Date(a.startDate))
-    const end = formatDateKey(new Date(a.endDate))
-    return dateStr >= start && dateStr <= end
-  })
-  if (hasActivity) {
-    day.bottomInfo = '●'
+function prevMonth() {
+  if (calMonth.value === 0) {
+    calMonth.value = 11
+    calYear.value--
+  } else {
+    calMonth.value--
   }
-  return day
 }
 
-function onCalendarSelect(date) {
+function nextMonth() {
+  if (calMonth.value === 11) {
+    calMonth.value = 0
+    calYear.value++
+  } else {
+    calMonth.value++
+  }
+}
+
+function onMonthPickerConfirm({ selectedValues }) {
+  calYear.value = Number(selectedValues[0])
+  calMonth.value = Number(selectedValues[1]) - 1
+  showMonthPicker.value = false
+}
+
+const calendarDays = computed(() => {
+  const year = calYear.value
+  const month = calMonth.value
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const daysInPrevMonth = new Date(year, month, 0).getDate()
+  const today = formatDateKey(new Date())
+  const days = []
+
+  // 上月末尾
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const d = daysInPrevMonth - i
+    days.push({ day: d, currentMonth: false, date: null, isToday: false, hasActivity: false })
+  }
+
+  // 当月
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d)
+    const dateStr = formatDateKey(date)
+    const hasActivity = activities.value.some(a => {
+      const start = formatDateKey(new Date(a.startDate))
+      const end = formatDateKey(new Date(a.endDate))
+      return dateStr >= start && dateStr <= end
+    })
+    days.push({
+      day: d,
+      currentMonth: true,
+      date,
+      isToday: dateStr === today,
+      hasActivity
+    })
+  }
+
+  // 下月开头补齐到42格（6行）
+  const remaining = 42 - days.length
+  for (let d = 1; d <= remaining; d++) {
+    days.push({ day: d, currentMonth: false, date: null, isToday: false, hasActivity: false })
+  }
+
+  return days
+})
+
+function onDayClick(date) {
   selectedDate.value = date
   showDateActivities.value = true
 }
@@ -264,6 +339,109 @@ function formatDateKey(date) {
   border-radius: 12px;
   padding: 16px;
   overflow: hidden;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.cal-nav-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-nav-btn:active {
+  background: #e0e0e0;
+}
+
+.cal-month-label {
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.cal-month-label:active {
+  background: #f0f0f0;
+}
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+.cal-weekday {
+  font-size: 12px;
+  color: #999;
+  padding: 4px 0;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  position: relative;
+}
+
+.cal-day:active {
+  background: #f0f0f0;
+}
+
+.cal-day-other {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.cal-day-today .cal-day-num {
+  background: #4fc3f7;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-day-num {
+  font-size: 14px;
+}
+
+.cal-dot {
+  font-size: 6px;
+  color: #4fc3f7;
+  position: absolute;
+  bottom: 2px;
+}
+
+.cal-day-has-activity .cal-day-num {
+  font-weight: 600;
 }
 
 .date-activities-popup {
