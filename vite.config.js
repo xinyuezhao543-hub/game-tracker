@@ -4,6 +4,7 @@ import Components from 'unplugin-vue-components/vite'
 import { VantResolver } from '@vant/auto-import-resolver'
 
 export default defineConfig({
+  base: process.env.GITHUB_ACTIONS ? '/game-tracker/' : '/',
   plugins: [
     vue(),
     Components({
