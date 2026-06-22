@@ -1,0 +1,66 @@
+import { createRouter, createWebHashHistory } from 'vue-router'
+
+const routes = [
+  {
+    path: '/',
+    name: 'home',
+    component: () => import('../views/Home.vue')
+  },
+  {
+    path: '/activity/add',
+    name: 'activity-add',
+    component: () => import('../views/ActivityEdit.vue')
+  },
+  {
+    path: '/activity/edit/:id',
+    name: 'activity-edit',
+    component: () => import('../views/ActivityEdit.vue')
+  },
+  {
+    path: '/collection',
+    name: 'collection',
+    component: () => import('../views/Collection.vue')
+  },
+  {
+    path: '/collection/dress/:gameId',
+    name: 'collection-dress',
+    component: () => import('../views/CollectionDress.vue')
+  },
+  {
+    path: '/collection/card/:gameId',
+    name: 'collection-card',
+    component: () => import('../views/CollectionCard.vue')
+  },
+  {
+    path: '/calculator',
+    name: 'calculator',
+    component: () => import('../views/Calculator.vue')
+  },
+  {
+    path: '/games',
+    name: 'games',
+    component: () => import('../views/Games.vue')
+  },
+  {
+    path: '/games/add',
+    name: 'game-add',
+    component: () => import('../views/GameEdit.vue')
+  },
+  {
+    path: '/games/edit/:id',
+    name: 'game-edit',
+    component: () => import('../views/GameEdit.vue')
+  },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('../views/Settings.vue')
+  }
+]
+
+const router = createRouter({
+  history: createWebHashHistory(),
+  routes
+})
+
+export default router
